@@ -1,17 +1,21 @@
 {
   "manifest_version": 3,
   "name": "Notebook LM Research Summarizer",
-  "version": "1.2",
-  "description": "Fetch research papers and upload them to Notebook LM for summarization.",
-  "action": {
-    "default_popup": "popup.html"
-  },
+  "version": "1.4",
+  "description": "Search research papers, summarize in Notebook LM, and view summaries.",
+  "action": { "default_popup": "popup.html" },
+  
   "permissions": [
     "activeTab",
-    "scripting"
+    "scripting",
+    "downloads"
   ],
   "host_permissions": [
-    "https://notebooklm.google.com/*"
+    "https://notebooklm.google.com/*",
+    "http://localhost:3000/*",
+    "http://127.0.0.1:3000/*",
+    "https://api.semanticscholar.org/*",
+    "http://export.arxiv.org/*"
   ],
   "background": {
     "service_worker": "background.js"

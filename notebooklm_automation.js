@@ -1,65 +1,61 @@
-const { chromium } = require('playwright');
-const express = require('express');
-const fetch = require('node-fetch');
+import express from "express";
+import fetch from "node-fetch";
+import { chromium } from "playwright";
 
 const app = express();
 app.use(express.json());
+app.use((_, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  next();
+});
+
+async function downloadPDF(url) {
+  const r = await fetch(url, { timeout: 25000 });
+  if (!r.ok) throw new Error(`HTTP ${r.status} for ${url}`);
+  return {
+    name: url.split("/").pop().replace(/\?.*$/, "") || "paper.pdf",
+    mimeType: "application/pdf",
+    buffer: await r.buffer()
+  };
+}
 
 app.post("/uploadAndSummarize", async (req, res) => {
-    const { pdfUrls } = req.body;
+  const urls = (req.body.pdfUrls || []).filter(u => u.endsWith(".pdf"));
+  if (!urls.length) return res.json({ status: "error", error: "No valid PDF URLs" });
 
-    if (!pdfUrls || pdfUrls.length === 0) {
-        return res.json({ status: "error", error: "No PDFs provided" });
-    }
+  const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext();
+  await context.tracing.start({ screenshots: true, snapshots: true });
+  const page = await context.newPage();
 
-    (async () => {
-        const browser = await chromium.launch({ headless: false }); // Change to true for background execution
-        const context = await browser.newContext();
-        const page = await context.newPage();
+  try {
+    await page.goto("https://notebooklm.google.com");
+    await page.waitForSelector('input[type="file"]', { timeout: 0 });
 
-        try {
-            // Open Notebook LM
-            await page.goto("https://notebooklm.google.com");
+    const files = await Promise.all(urls.map(downloadPDF));
+    const upload = await page.$('input[type="file"]');
+    await upload.setInputFiles(files);
 
-            // Wait for the file upload input
-            await page.waitForSelector('input[type="file"]', { timeout: 10000 });
-            const uploadInput = await page.$('input[type="file"]');
+    await page.waitForSelector('button[aria-label="Summarize"]', { timeout: 12000 });
+    await page.click('button[aria-label="Summarize"]');
 
-            // Download PDFs and create buffers
-            let files = [];
-            for (let i = 0; i < pdfUrls.length; i++) {
-                let response = await fetch(pdfUrls[i]);
-                let buffer = await response.buffer();
-                files.push({
-                    name: `paper_${i + 1}.pdf`,
-                    mimeType: "application/pdf",
-                    buffer: buffer
-                });
-            }
+    await page.waitForTimeout(6000);
 
-            // Upload files
-            await uploadInput.setInputFiles(files);
-            console.log("Files uploaded successfully.");
+    const summaries = await page.$$eval('[data-testid="source-summary-card"]', cards =>
+      cards.map(c => ({
+        title: c.querySelector('h3')?.innerText ?? "Untitled",
+        summary: c.querySelector('div')?.innerText ?? ""
+      }))
+    );
 
-            // Click the summarize button
-            await page.waitForSelector('button[aria-label="Summarize"]', { timeout: 10000 });
-            await page.click('button[aria-label="Summarize"]');
-            console.log("Summarization started!");
-
-            res.json({ status: "success" });
-
-        } catch (error) {
-            console.error("Automation error:", error);
-            res.json({ status: "error", error: error.message });
-        } finally {
-            // Close browser after some time to allow users to see the results
-            setTimeout(() => browser.close(), 10000);
-        }
-    })();
+    res.json({ status: "success", summaries });
+  } catch (e) {
+    console.error("Playwright error:", e);
+    res.json({ status: "error", error: e.message });
+  } finally {
+    await context.tracing.stop({ path: "trace.zip" });
+    setTimeout(() => browser.close(), 30000);
+  }
 });
 
-// Start the Express server for automation
-const PORT = 3000;
-app.listen(PORT, () => {
-    console.log(`Playwright server running at http://localhost:${PORT}`);
-});
+app.listen(3000, () => console.log("⇢  http://localhost:3000  (Playwright broker)"));

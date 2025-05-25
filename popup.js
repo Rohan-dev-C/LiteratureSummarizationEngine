@@ -1,122 +1,107 @@
-const SEMANTIC_SCHOLAR_API = "https://api.semanticscholar.org/graph/v1/paper/search";
-const ARXIV_API = "http://export.arxiv.org/api/query";
-
-// Function to fetch top 10 research papers from Semantic Scholar
-async function fetchResearchPapers(query) {
-    try {
-        // Fetch papers from Semantic Scholar
-        const response = await fetch(`${SEMANTIC_SCHOLAR_API}?query=${encodeURIComponent(query)}&limit=10&fields=title,abstract,citationCount,url`);
-        const data = await response.json();
-
-        // Check if data is valid
-        if (!data.data || data.data.length === 0) {
-            console.warn("No results from Semantic Scholar. Trying arXiv...");
-            return fetchArxivPapers(query);  // Fallback to arXiv
-        }
-
-        // Process and return top 10 papers
-        return data.data.map(paper => ({
-            title: paper.title,
-            abstract: paper.abstract || "No abstract available.",
-            citations: paper.citationCount || 0,
-            pdfURL: paper.url || "#"
-        }));
-    } catch (error) {
-        console.error("Error fetching Semantic Scholar papers:", error);
-        return fetchArxivPapers(query);  // Try arXiv as a backup
-    }
-}
-
-// Function to fetch top 10 research papers from arXiv
-async function fetchArxivPapers(query) {
-    try {
-        const response = await fetch(`${ARXIV_API}?search_query=all:${encodeURIComponent(query)}&start=0&max_results=10&sortBy=relevance`);
-        const text = await response.text();
-        
-        // Parse XML response from arXiv
-        const parser = new DOMParser();
-        const xml = parser.parseFromString(text, "text/xml");
-        const entries = xml.getElementsByTagName("entry");
-        
-        // Extract relevant information
-        let papers = [];
-        for (let entry of entries) {
-            let title = entry.getElementsByTagName("title")[0].textContent;
-            let summary = entry.getElementsByTagName("summary")[0].textContent;
-            let pdfURL = entry.getElementsByTagName("id")[0].textContent;
-            
-            papers.push({
-                title: title.trim(),
-                abstract: summary.trim(),
-                citations: "N/A",  // arXiv does not provide citation counts
-                pdfURL: pdfURL
-            });
-        }
-        return papers;
-    } catch (error) {
-        console.error("Error fetching arXiv papers:", error);
-        return [];
-    }
-}
-
-// Listen for utton click
-document.getElementById('searchBtn').addEventListener('click', async function () {
-    const query = document.getElementById('query').value.trim();
-    if (!query) {
-        alert("Please enter a topic.");
-        return;
-    }
-
-    // Fetch real research papers
-    let topPapers = await fetchResearchPapers(query);
-
-    // Display results in popup
-    displayResults(topPapers);
-
-    // Store for later use
-    window.topPapers = topPapers;
-    document.getElementById('summarizeBtn').style.display = 'block';
-});
-
-// Function to display papers in the popup UI
-function displayResults(papers) {
-    const resultsDiv = document.getElementById('results');
-    resultsDiv.innerHTML = '';
-    papers.forEach(paper => {
-        const paperDiv = document.createElement('div');
-        paperDiv.className = 'paper';
-        paperDiv.innerHTML = `
-            <h3>${paper.title}</h3>
-            <p><strong>Citations:</strong> ${paper.citations}</p>
-            <p>${paper.abstract}</p>
-            <a href="${paper.pdfURL}" target="_blank">Read Paper</a>
-        `;
-        resultsDiv.appendChild(paperDiv);
+// --- tiny, dependency-free cosine-similarity k-NN ---------------------------
+function embed(text) {
+    const vec = new Float32Array(300);
+    text.toLowerCase().split(/\W+/).forEach(w => {
+      if (!w) return;
+      const h = [...w].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 300, 7);
+      vec[h] += 1;
     });
-}
-
-// Listen for summarize button click
-document.getElementById("summarizeBtn").addEventListener("click", async function () {
-  if (window.topPapers) {
-      const pdfUrls = window.topPapers.map(paper => paper.pdfURL);
-
-      // Send a request to the local Playwright automation server
-      fetch("http://localhost:3000/uploadAndSummarize", {
-          method: "POST",
-          headers: {
-              "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ pdfUrls })
-      })
-      .then(response => response.json())
-      .then(data => {
-          if (data.status === "success") {
-              alert("Files uploaded and summarization started in Notebook LM!");
-          } else {
-              alert("Error during automation: " + data.error);
-          }
-      })
-      .catch(error => console.error("Error calling automation server:", error));
+    return vec;
   }
-});
-
+  function cosine(a, b) {
+    let dot = 0, na = 0, nb = 0;
+    for (let i = 0; i < a.length; i++) {
+      dot += a[i] * b[i]; na += a[i] ** 2; nb += b[i] ** 2;
+    }
+    return dot / (Math.sqrt(na) * Math.sqrt(nb) + 1e-9);
+  }
+  // ---------------------------------------------------------------------------
+  
+  const S2_API = "https://api.semanticscholar.org/graph/v1/paper/search";
+  const ARXIV_API = "https://export.arxiv.org/api/query";
+  
+  async function fetchSemanticScholar(query) {
+    const url = `${S2_API}?query=${encodeURIComponent(query)}&limit=30&fields=title,abstract,citationCount,url,openAccessPdf`;
+    const { data = [] } = await (await fetch(url)).json();
+    return data.map(p => ({
+      title: p.title,
+      abstract: p.abstract || "",
+      citations: p.citationCount ?? 0,
+      pdfURL: p.openAccessPdf?.url || p.url || ""
+    }));
+  }
+  
+  async function fetchArxiv(query) {
+    const res = await fetch(`${ARXIV_API}?search_query=all:${encodeURIComponent(query)}&start=0&max_results=30`);
+    const xml = new DOMParser().parseFromString(await res.text(), "text/xml");
+    return [...xml.getElementsByTagName("entry")].map(e => {
+      const idAbs = e.getElementsByTagName("id")[0].textContent;
+      const id = idAbs.split("/abs/")[1];
+      return {
+        title: e.getElementsByTagName("title")[0].textContent.trim(),
+        abstract: e.getElementsByTagName("summary")[0].textContent.trim(),
+        citations: "N/A",
+        pdfURL: `https://arxiv.org/pdf/${id}.pdf`
+      };
+    });
+  }
+  
+  async function getPapers(query) {
+    const [s2, ax] = await Promise.all([
+      fetchSemanticScholar(query).catch(_ => []),
+      fetchArxiv(query).catch(_ => [])
+    ]);
+    const candidates = [...s2, ...ax];
+    const qVec = embed(query);
+    candidates.forEach(p => p.score = cosine(qVec, embed(p.title + " " + p.abstract)));
+    return candidates.sort((a, b) => b.score - a.score).slice(0, 10);
+  }
+  
+  function displayPapers(papers) {
+    results.innerHTML = papers.map(p => `
+      <div class="paper">
+        <h3>${p.title}</h3>
+        <p><strong>Citations:</strong> ${p.citations}</p>
+        <p>${p.abstract.slice(0, 300)}${p.abstract.length > 300 ? "…" : ""}</p>
+        <a href="${p.pdfURL}" target="_blank">PDF</a>
+      </div>`).join("");
+  }
+  
+  function displaySummaries(summaries) {
+    const summaryHTML = summaries.map(s => `
+      <div class="summary">
+        <h3>${s.title}</h3>
+        <p>${s.summary}</p>
+      </div>`).join("");
+    results.innerHTML += `<hr><h2>Summaries from Notebook LM</h2>${summaryHTML}`;
+  }
+  
+  // UI logic
+  const qInput = document.getElementById("query");
+  const searchBtn = document.getElementById("searchBtn");
+  const results = document.getElementById("results");
+  const sumBtn = document.getElementById("summarizeBtn");
+  
+  searchBtn.onclick = async () => {
+    const q = qInput.value.trim();
+    if (!q) return alert("Enter a topic first!");
+    const papers = await getPapers(q);
+    displayPapers(papers);
+    window.__pdfs = papers.map(p => p.pdfURL).filter(Boolean);
+    sumBtn.style.display = window.__pdfs.length ? "block" : "none";
+  };
+  
+  sumBtn.onclick = () => {
+    fetch("http://127.0.0.1:3000/uploadAndSummarize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pdfUrls: window.__pdfs })
+    }).then(r => r.json()).then(data => {
+      if (data.status === "success") {
+        displaySummaries(data.summaries);
+      } else {
+        alert("Automation error: " + data.error);
+      }
+    }).catch(e => alert("Server unreachable: " + e));
+  };
+  
