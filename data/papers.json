@@ -1,0 +1,35 @@
+{
+    "papers": [
+      {
+        "title": "Deep Learning for Natural Language Processing",
+        "abstract": "This paper discusses various deep learning techniques for natural language processing tasks.",
+        "citations": 1200,
+        "pdfURL": "https://example.com/paper1.pdf"
+      },
+      {
+        "title": "Advances in Computer Vision",
+        "abstract": "This paper provides a comprehensive review of the latest advancements in computer vision.",
+        "citations": 950,
+        "pdfURL": "https://example.com/paper2.pdf"
+      },
+      {
+        "title": "Machine Learning in Healthcare",
+        "abstract": "Applications of machine learning in healthcare are discussed in this study.",
+        "citations": 800,
+        "pdfURL": "https://example.com/paper3.pdf"
+      },
+      {
+        "title": "Reinforcement Learning: An Overview",
+        "abstract": "An overview of reinforcement learning techniques and their applications.",
+        "citations": 650,
+        "pdfURL": "https://example.com/paper4.pdf"
+      },
+      {
+        "title": "Data Mining Methods and Applications",
+        "abstract": "This work explores data mining methods used across various domains.",
+        "citations": 500,
+        "pdfURL": "https://example.com/paper5.pdf"
+      }
+    ]
+  }
+  

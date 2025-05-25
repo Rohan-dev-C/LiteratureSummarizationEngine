@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Notebook LM Research Summarizer",
+  "version": "1.2",
+  "description": "Fetch research papers and upload them to Notebook LM for summarization.",
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://notebooklm.google.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}
