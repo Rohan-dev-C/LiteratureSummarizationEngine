@@ -3,8 +3,19 @@
   "name": "Notebook LM Research Summarizer",
   "version": "1.4",
   "description": "Search research papers, summarize in Notebook LM, and view summaries.",
-  "action": { "default_popup": "popup.html" },
-  
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon.png",
+      "48": "icon.png",
+      "128": "icon.png"
+    }
+  },
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  },
   "permissions": [
     "activeTab",
     "scripting",
@@ -15,9 +26,12 @@
     "http://localhost:3000/*",
     "http://127.0.0.1:3000/*",
     "https://api.semanticscholar.org/*",
-    "http://export.arxiv.org/*"
+    "https://export.arxiv.org/*"
   ],
   "background": {
     "service_worker": "background.js"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' http://localhost:3000 http://127.0.0.1:3000 https://api.semanticscholar.org https://export.arxiv.org;"
   }
 }

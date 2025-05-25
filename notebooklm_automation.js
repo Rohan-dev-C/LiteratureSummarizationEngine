@@ -1,13 +1,26 @@
 import express from "express";
 import fetch from "node-fetch";
 import { chromium } from "playwright";
+import { execSync } from "child_process";        // ← NEW
 
 const app = express();
 app.use(express.json());
-app.use((_, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  next();
-});
+app.use((_, res, next) => { res.setHeader("Access-Control-Allow-Origin", "*"); next(); });
+
+/* ---------- ensure a Playwright browser is present ----------------------- */
+async function launchBrowser() {
+  try {
+    return await chromium.launch({ headless: true });
+  } catch (e) {
+    if (String(e).includes("Executable doesn't exist")) {
+      console.log("▶ Playwright browsers missing – downloading Chromium …");
+      execSync("npx playwright install chromium", { stdio: "inherit" });
+      return await chromium.launch({ headless: true });
+    }
+    throw e;          // other errors propagate
+  }
+}
+/* ------------------------------------------------------------------------ */
 
 async function downloadPDF(url) {
   const r = await fetch(url, { timeout: 25000 });
@@ -23,7 +36,7 @@ app.post("/uploadAndSummarize", async (req, res) => {
   const urls = (req.body.pdfUrls || []).filter(u => u.endsWith(".pdf"));
   if (!urls.length) return res.json({ status: "error", error: "No valid PDF URLs" });
 
-  const browser = await chromium.launch({ headless: true });
+  const browser = await launchBrowser();               // ← CHANGED
   const context = await browser.newContext();
   await context.tracing.start({ screenshots: true, snapshots: true });
   const page = await context.newPage();
@@ -38,13 +51,12 @@ app.post("/uploadAndSummarize", async (req, res) => {
 
     await page.waitForSelector('button[aria-label="Summarize"]', { timeout: 12000 });
     await page.click('button[aria-label="Summarize"]');
-
     await page.waitForTimeout(6000);
 
     const summaries = await page.$$eval('[data-testid="source-summary-card"]', cards =>
       cards.map(c => ({
-        title: c.querySelector('h3')?.innerText ?? "Untitled",
-        summary: c.querySelector('div')?.innerText ?? ""
+        title:   c.querySelector("h3")?.innerText ?? "Untitled",
+        summary: c.querySelector("div")?.innerText ?? ""
       }))
     );
 
