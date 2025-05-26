@@ -1,17 +1,22 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Notebook LM Research Summarizer</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <title>Notebook LM Summarizer</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h1>Research Paper Search</h1>
-  <input type="text" id="query" placeholder="Enter topic">
-  <button id="searchBtn">Search</button>
+  <h1>Research Summarizer</h1>
+
+  <div class="controls">
+    <input type="text" id="query" placeholder="Enter research topic" autofocus />
+    <button id="searchBtn">Search</button>
+    <button id="summarizeBtn" style="display:none">Summarize in Notebook LM</button>
+  </div>
+
   <div id="results"></div>
-  <button id="summarizeBtn" style="display: none;">Summarize in Notebook LM</button>
+
+  <!-- ensure this is *after* your DOM elements -->
   <script src="popup.js"></script>
 </body>
 </html>
-    

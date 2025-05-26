@@ -1,14 +1,16 @@
 {
     "name": "notebooklm-broker",
-    "version": "1.0.0",
+    "version": "1.2.0",
     "type": "module",
     "scripts": {
-        "start": "node notebooklm_automation.js",
-        "postinstall": "npx playwright install chromium"
+      "start": "node notebooklm_automation.js",
+      "postinstall": "npx playwright install chromium"
     },
     "dependencies": {
-        "express": "^4.19.2",
-        "node-fetch": "^3.3.2",
-        "playwright": "^1.52.0"
+      "cors": "^2.8.5",
+      "express": "^4.19.2",
+      "node-fetch": "^3.3.2",
+      "playwright": "^1.44.0"
     }
-}
+  }
+  
