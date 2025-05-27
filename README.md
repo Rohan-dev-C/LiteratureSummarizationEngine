@@ -1,10 +1,7 @@
 # NotebookLM Research Summarizer
 
-A Chrome extension + local Node.js broker that lets you:
+A Chrome extension and Node.js broker search for top academic papers using **Semantic Scholar** and **arXiv**, automatically downloading them and inputting into NoteBookLM, fully automating hallucination-free summarization of large groups of (up to 20) papers. 
 
-- Search for most relevant academic papers using **Semantic Scholar** and **arXiv**
-- Automatically download the top PDFs and inputs top PDFs to NoteBookLM and fully automates hallucination-free summarization
-- View the summaries directly inside the extension popup
 ---
 
 ## Features
