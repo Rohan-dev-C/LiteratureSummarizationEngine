@@ -85,6 +85,7 @@ app.post("/uploadAndSummarize", async (req, res) => {
     console.log("✅ Notebook LM ready");
 
     const files = await Promise.all(urls.map(downloadPDF));
+    
     await upload.setInputFiles(files);
 
     await lmPage.waitForSelector('button[aria-label="Summarize"]', { timeout: 30_000 });
